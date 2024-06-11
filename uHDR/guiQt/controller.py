@@ -1013,21 +1013,12 @@ class HDRviewerController():
         else: self.callBackUpdate()
 
     def displayFile(self, HDRfilename):
-        """
-        HDRviewerController display file: run HDRImageViewer process ti display HDR image (from filename)
-
-        Args:
-            HDRfilename: string
-                Required  : hdr image filename
-                
-        """
-
-         # check that no current display process already open
+        print('Starting displayFile method: ', HDRfilename)
+        # check that no current display process already open
         if self.viewerProcess:
             # the display HDR process is already running
             # close current
-
-            process_name = "HDRImageViewer*"
+            process_name = "Preview"
             try:
                 pid = subprocess.check_output(['pgrep', '-f', process_name]).decode('utf-8').strip()
             except subprocess.CalledProcessError:
@@ -1039,19 +1030,25 @@ class HDRviewerController():
                 print(f"No process found with name {process_name}")
             time.sleep(0.05)
         # run display HDR process
-        self.viewerProcess = subprocess.Popen(["HDRImageViewer.exe","-f", "-input:"+HDRfilename, "-f", "-h"], shell=True)
+        self.viewerProcess = subprocess.Popen(["open", "-a", "Preview", HDRfilename], shell=False)
         time.sleep(0.10)
         psData = subprocess.run(['ps', '-A'], capture_output=True, universal_newlines=True).stdout
-        if not 'HDRImageViewer' in psData: 
+        if not 'Preview' in psData:
             # re-run display HDR process
-            self.viewerProcess = subprocess.Popen(["HDRImageViewer.exe","-f", "-input:"+HDRfilename, "-f", "-h"], shell=True)
+            self.viewerProcess = subprocess.Popen(["open", "-a", "Preview", HDRfilename], shell=False)
 
     def displayIMG(self, img):
+        print('Starting displayIMG method')
+        print('Image name:', img.name)
         img = img.process(hdrCore.processing.clip())
-        colorData = img.colorData*self.model.displayModel['scaling']
+        print('Image processed')
+        colorData = img.colorData * self.model.displayModel['scaling']
+        print('Color data scaled')
 
-        h,w, _ = colorData.shape
+        h, w, _ = colorData.shape
         hD, wD = self.model.displayModel['shape']
+        print('Image dimensions:', h, w)
+        print('Display model dimensions:', hD, wD)
 
         if w<wD:
             back = np.ones((hD,wD,3))*0.2
@@ -1063,6 +1060,7 @@ class HDRviewerController():
         # save as temp.hdr
         colour.write_image(back,'temp.hdr', method='Imageio')
         self.displayFile('temp.hdr')
+        print('Finished displayIMG method')
 
     def displaySplash(self):
         self.model.currentIMG = None
@@ -1073,7 +1071,7 @@ class HDRviewerController():
         if self.viewerProcess:
             # the display HDR process is already running
             # close current
-            process_name = "HDRImageViewer*"
+            process_name = "Preview"
             pid = subprocess.check_output(['pgrep', '-f', process_name]).decode('utf-8').strip()
             os.kill(int(pid), signal.SIGTERM)
             self.viewerProcess = None
